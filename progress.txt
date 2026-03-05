@@ -1,35 +1,42 @@
-For this checkpoint, I’m only working on the Easy milestone, and this is still partial progress. Here, focused on
+Easy milestone ... partially done
 - parsing the header format
 - building a read-only indexing interface with shape checks
 
-I intentionally did not work on medium/hard parts yet (GADT-heavy typing, matmul, benchmark comparisons, SIMD/FFI), given the timeline of this project (based on
-TA's and professor's feedback).
+Not doing the medium/hard parts yet, given the timeline of this project.
+(based on TA's and professor's feedback)
 
-What I implemented
-1. Read-only tensor core (partial Easy)
+
+Implemented:
+1. Read-only tensor core
 - File: src/HTensor/Types.hs
-- I created a simple `Tensor` type backed by `ForeignPtr`.
-- I added `mkTensorRO` to validate shape when constructing a tensor.
-- I added `indexRO` so reads are bounds-checked.
-- The interface is read-only right now (no write function).
+- Created a simple `Tensor` type backed by `ForeignPtr`
+- Added `mkTensorRO` to validate shape when constructing a tensor
+- Added `indexRO` so reads are bounds-checked
+- The interface is read-only right now (no write function)
 
-2. Header parser (partial Easy)
+2. Header parser
 - File: src/HTensor/Header.hs
-- I added a parser for the 128-byte header.
-- It currently extracts:
-  - rows and cols
-  - dtype tag
+- Added a parser for the 128-byte header
+- Currently extracts rows and cols, dtype tag
 
-Current status
-- Easy milestone: partially done (header parsing + read-only indexing + shape checks).
-- Medium milestone: deferred.
-- Hard milestone: deferred.
+3. Evaluation
+- File: test/Main.hs
+- small test suite that checks both the header parser and the read-only tensor API
+    - `parseHeader valid header`
+        - builds correct 128-byte header
+        - checks parsed result matches expected rows/cols/dtype
+    - `parseHeader short header`
+        - passes too few bytes
+        - confirms the parser fails instead of accepting invalid input
+    - `mkTensorRO invalid shape`
+        - checks that a zero dimension returns `InvalidShape`
+    - `indexRO in/out bounds`
+        - checks that a valid index returns the correct value
+        - checks that an invalid index returns an `IndexOutOfBounds` error
+- `cabal test all` shows all tests passing
 
-What I still need to do
-1. Add actual mmap-backed loading so tensor data comes directly from mapped file memory.
-2. Use parsed header metadata to construct tensors.
-3. Add tests for header parsing and index bounds behavior.
 
-How I’m evaluating this checkpoint
-- Current correctness: parser returns structured header fields, and indexing rejects out-of-bounds access.
-- Next step: mmap integration to move from partial Easy progress toward a completed Easy milestone.
+Next steps:
+1. Add actual mmap-backed loading so tensor data comes directly from mapped file memory
+2. Use parsed header metadata to construct tensors
+3. Add tests for header parsing and index bounds behavior
