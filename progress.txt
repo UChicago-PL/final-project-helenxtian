@@ -1,0 +1,35 @@
+For this checkpoint, I’m only working on the Easy milestone, and this is still partial progress. Here, focused on
+- parsing the header format
+- building a read-only indexing interface with shape checks
+
+I intentionally did not work on medium/hard parts yet (GADT-heavy typing, matmul, benchmark comparisons, SIMD/FFI), given the timeline of this project (based on
+TA's and professor's feedback).
+
+What I implemented
+1. Read-only tensor core (partial Easy)
+- File: src/HTensor/Types.hs
+- I created a simple `Tensor` type backed by `ForeignPtr`.
+- I added `mkTensorRO` to validate shape when constructing a tensor.
+- I added `indexRO` so reads are bounds-checked.
+- The interface is read-only right now (no write function).
+
+2. Header parser (partial Easy)
+- File: src/HTensor/Header.hs
+- I added a parser for the 128-byte header.
+- It currently extracts:
+  - rows and cols
+  - dtype tag
+
+Current status
+- Easy milestone: partially done (header parsing + read-only indexing + shape checks).
+- Medium milestone: deferred.
+- Hard milestone: deferred.
+
+What I still need to do
+1. Add actual mmap-backed loading so tensor data comes directly from mapped file memory.
+2. Use parsed header metadata to construct tensors.
+3. Add tests for header parsing and index bounds behavior.
+
+How I’m evaluating this checkpoint
+- Current correctness: parser returns structured header fields, and indexing rejects out-of-bounds access.
+- Next step: mmap integration to move from partial Easy progress toward a completed Easy milestone.
