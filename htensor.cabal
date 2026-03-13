@@ -1,5 +1,5 @@
 cabal-version:      3.8
-name:               htensor2
+name:               htensor
 version:            0.1.0.0
 build-type:         Simple
 
@@ -12,16 +12,19 @@ library
       base >=4.14 && <5
     , bytestring
     , binary
+    , mmap >=0.5.9
   default-language:    Haskell2010
 
-test-suite htensor2-test
+test-suite htensor-test
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   hs-source-dirs:
       test
   build-depends:
       base
-    , htensor2
+    , htensor
     , bytestring
     , binary
+    , directory
+    , mmap >=0.5.9
   default-language:    Haskell2010

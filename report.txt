@@ -1,0 +1,71 @@
+H-Tensor Final Project Report
+
+Author
+- Helen Tian
+
+Project overview
+H-Tensor is a small Haskell library for read-only, memory-mapped 2D float tensors. The project targets startup-latency issues by mapping tensor files directly into memory instead of copying all data into Haskell-managed arrays first.
+
+Current implementation status
+This submission completes the Easy milestone.
+Implemented:
+1) Memory-mapped loading
+- loadTensorFloatRO maps a binary file with mmapFileForeignPtr.
+- The tensor data region is addressed by offsetting the mapped ForeignPtr past the 128-byte header.
+
+2) Tensor abstraction and safe indexing
+- Tensor is represented as TensorRO Shape (ForeignPtr a).
+- mkTensorRO validates nonzero positive shape.
+- indexRO performs bounds checks and returns Either TensorError a.
+- Added operators:
+  - (!?) for safe indexing (returns Either)
+  - (!) for checked indexing (throws IO error on invalid index)
+
+3) Header parsing
+- Header format is fixed at 128 bytes.
+- Header parser reads rows, cols, and dtype tag.
+- DType tag 1 is currently supported (Float32).
+
+4) Bracket-style helper
+- withTensorFloatRO provides a bracket-based loading helper to structure resource usage around a callback.
+
+5) Tests
+- Unit and integration-style tests are in test/Main.hs.
+- Coverage includes:
+  - valid/short header parsing
+  - invalid shape rejection
+  - in-bounds and out-of-bounds indexing
+  - end-to-end loading from temporary tensor file
+  - conversion tests from image/PDF fixture bytes into tensor binary format
+  - operator tests for (!?) and (!)
+  - withTensorFloatRO callback test
+- cabal test all passes.
+
+Code organization
+- src/HTensor/Header.hs
+  - Header type, headerSize, parseHeader
+- src/HTensor/Types.hs
+  - Tensor type, TensorError, mkTensorRO
+  - loadTensorFloatRO, withTensorFloatRO
+  - indexRO, (!?), (!)
+- test/Main.hs
+  - standalone test runner and all project tests
+- test/fixtures/
+  - sample.png and sample.pdf fixture files used by conversion-based tests
+
+How to run and interact
+1) Build and run tests
+- cabal test all
+
+2) Expected output
+- Multiple [PASS] lines ending with "All tests passed."
+
+Known limitations / scope decisions
+- Only float32 loading is supported right now (dtype tag 1).
+- Tensor interface is read-only in this milestone.
+- Medium/Hard milestone features (GADT dtype-level typing, matmul, FFI SIMD validation) are not implemented
+
+Potential next steps
+- Add dtype-generic loading and type-safe GADT API.
+- Add matrix operations with shape-checked error handling.
+- Add benchmark and optional SIMD checksum pipeline.
