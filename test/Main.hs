@@ -1,3 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Main (main) where
 
 import Data.Binary.Put (putByteString, putFloatle, putWord32le, putWord8, runPut)
@@ -11,6 +15,15 @@ import System.Directory (getTemporaryDirectory, removeFile)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hClose, openBinaryTempFile)
 import HTensor.Header (Header(..), headerSize, parseHeader)
+import HTensor.Typed
+  ( DType(Float32)
+  , SomeTypedTensor(..)
+  , indexTypedRO
+  , loadTypedTensorFloatRO
+  , matmulFloat
+  , mkTypedTensorRO
+  , typedTensorShape
+  )
 import HTensor.Types (TensorError(..), (!), (!?), indexRO, loadTensorFloatRO, mkTensorRO, withTensorFloatRO)
 
 -- Paths to committed fixture files (relative to project root)
@@ -31,8 +44,10 @@ main = do
   ok7 <- testLoadFromPdfAfterConversion
   ok8 <- testIndexingOperators
   ok9 <- testWithTensorFloatRO
+  ok10 <- testTypedMatmul
+  ok11 <- testLoadTypedTensor
 
-  if and [ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9]
+  if and [ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10, ok11]
     then do
       putStrLn "All tests passed."
       exitSuccess
@@ -193,6 +208,52 @@ testWithTensorFloatRO = do
 
   removeFile tmpPath
   pure ok
+
+testTypedMatmul :: IO Bool
+testTypedMatmul = do
+  leftData <- (mallocForeignPtrArray 6 :: IO (ForeignPtr Float))
+  rightData <- (mallocForeignPtrArray 6 :: IO (ForeignPtr Float))
+  writeFloatValues leftData [1, 2, 3, 4, 5, 6]
+  writeFloatValues rightData [7, 8, 9, 10, 11, 12]
+
+  case (mkTypedTensorRO @2 @3 Float32 leftData, mkTypedTensorRO @3 @2 Float32 rightData) of
+    (Right left, Right right) -> do
+      result <- matmulFloat left right
+      topLeft <- indexTypedRO result (0, 0)
+      bottomRight <- indexTypedRO result (1, 1)
+      if typedTensorShape result == (2, 2) && topLeft == Right 58 && bottomRight == Right 154
+        then pass "typed C FFI matrix multiplication"
+        else failTest "typed matrix multiplication returned unexpected values"
+    (Left err, _) -> failTest $ "left typed tensor construction failed: " ++ show err
+    (_, Left err) -> failTest $ "right typed tensor construction failed: " ++ show err
+
+testLoadTypedTensor :: IO Bool
+testLoadTypedTensor = do
+  tmpDir <- getTemporaryDirectory
+  (tmpPath, handle) <- openBinaryTempFile tmpDir "htensor-typed.bin"
+  LBS.hPut handle (runPut $ do
+    putWord32le 2
+    putWord32le 2
+    putWord8 1
+    putByteString (BS.replicate (headerSize - 9) 0)
+    mapM_ putFloatle [1.0, 2.0, 3.0, 4.0]
+    )
+  hClose handle
+  loaded <- loadTypedTensorFloatRO tmpPath
+  removeFile tmpPath
+
+  case loaded of
+    Left err -> failTest $ "loadTypedTensorFloatRO failed: " ++ show err
+    Right (SomeTypedTensor tensor) -> do
+      result <- indexTypedRO tensor (1, 1)
+      if typedTensorShape tensor == (2, 2) && result == Right 4.0
+        then pass "typed mmap tensor load"
+        else failTest "typed mmap tensor returned unexpected shape or value"
+
+writeFloatValues :: ForeignPtr Float -> [Float] -> IO ()
+writeFloatValues fptr values =
+  withForeignPtr fptr $ \ptr ->
+    mapM_ (uncurry (pokeElemOff ptr)) (zip [0..] values)
 
 writeTensorFromFileBytes :: FilePath -> FilePath -> IO ()
 writeTensorFromFileBytes srcPath dstPath = do

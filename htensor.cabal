@@ -3,11 +3,18 @@ name:               htensor
 version:            0.1.0.0
 build-type:         Simple
 
+flag cuda
+  description:        Build the optional CUDA/cuBLAS benchmark backend
+  default:            False
+  manual:             True
+
 library
   hs-source-dirs:      src
+  c-sources:           csrc/htensor.c
   exposed-modules:
       HTensor.Header
     , HTensor.Types
+    , HTensor.Typed
   build-depends:
       base >=4.14 && <5
     , bytestring
@@ -27,4 +34,23 @@ test-suite htensor-test
     , binary
     , directory
     , mmap >=0.5.9
+  default-language:    Haskell2010
+
+benchmark htensor-bench
+  type:                exitcode-stdio-1.0
+  main-is:             Main.hs
+  hs-source-dirs:      benchmark
+  build-depends:
+      base
+    , htensor
+    , bytestring
+    , binary
+    , directory
+    , filepath
+  if flag(cuda)
+    cpp-options:        -DCUDA_AVAILABLE
+    c-sources:          csrc/htensor_cuda.c
+    extra-libraries:
+        cudart
+      , cublas
   default-language:    Haskell2010

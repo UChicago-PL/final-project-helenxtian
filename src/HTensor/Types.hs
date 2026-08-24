@@ -6,6 +6,7 @@ module HTensor.Types
   , loadTensorFloatRO
   , withTensorFloatRO
   , tensorShape
+  , tensorForeignPtr
   , indexRO
   , (!?)
   , (!)
@@ -42,6 +43,9 @@ mkTensorRO shape@(rows, cols) fptr
 
 tensorShape :: Tensor a -> Shape
 tensorShape (TensorRO shape _) = shape
+
+tensorForeignPtr :: Tensor a -> ForeignPtr a
+tensorForeignPtr (TensorRO _ fptr) = fptr
 
 indexRO :: Storable a => Tensor a -> (Int, Int) -> IO (Either TensorError a)
 indexRO (TensorRO shape@(rows, cols) fptr) idx@(row, col)
