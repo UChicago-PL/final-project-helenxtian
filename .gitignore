@@ -1,0 +1,23 @@
+dist-newstyle/
+cabal.project.local
+cabal.project.local~
+.ghc.environment.*
+hie.yaml
+test/Main
+
+# Haskell build artifacts
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+
+# macOS
+.DS_Store
+
+# Editor
+*~
+.vscode/
+
+# Generated benchmark files and results
+benchmark-data/
+benchmark-results/
