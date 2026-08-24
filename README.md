@@ -5,7 +5,7 @@
 
 Modern AI systems often spend more time loading model weights from disk than performing inference. Large language models can easily exceed 10–100GB, and traditional loading requires reading the entire file into memory before computation can begin. This introduces startup latencies of tens of seconds.
 
-This project proposes H-Tensor, a small Haskell library that enables zero-copy memory-mapped tensors using mmap. Instead of copying model weights into memory, the library will map a binary file directly into the process address space and rely on the operating system’s paging mechanism to load data lazily on demand. The result is near-instant startup time even for very large models.
+H-Tensor is a small Haskell library that enables zero-copy memory-mapped tensors using mmap. Instead of copying tensor payloads into Haskell-managed arrays, the library maps a binary file directly into the process address space and relies on the operating system's paging mechanism to load data lazily on demand.
 
 This addresses a critical pain point in modern AI infrastructure where models spend more time loading than performing inference.
 
@@ -86,3 +86,37 @@ Success Criteria: Checksum runs at RAM bandwidth (~20GB/s); detects single-bit c
 From Course: Parser combinators (Week 7), ExceptT (Week 8), Storable vectors (Week 9), GADTs\
 Self-Study: mmap syscalls, Haskell Foreign library, C FFI, SIMD intrinsics\
 Resources: Real World Haskell Ch. 17, mmap package docs, Intel Intrinsics Guide
+
+## Implemented Typed API and FFI
+
+`HTensor.Typed` adds a GADT-backed API with dtype witnesses and type-level row and column dimensions. Matrix multiplication requires inputs with matching inner dimensions in its type:
+
+```haskell
+matmulFloat
+    :: TypedTensor rows inner Float
+    -> TypedTensor inner cols Float
+    -> IO (TypedTensor rows cols Float)
+```
+
+Float32 matrix multiplication runs through a C kernel bound with Haskell's C FFI. Tensors loaded from files retain their mmap-backed `ForeignPtr` without copying the payload; because file dimensions are discovered at runtime, `loadTypedTensorFloatRO` returns an existential `SomeTypedTensor Float`.
+
+Run the complete test suite with:
+
+```sh
+cabal test all
+```
+
+## CPU and NVIDIA B200 Benchmarks
+
+The benchmark executable is CPU-only by default. An opt-in Cabal flag adds a CUDA Runtime and cuBLAS backend without changing the core library or requiring CUDA for normal builds.
+
+```sh
+# Portable CPU build and benchmark
+scripts/run-cpu-benchmark.sh
+
+# On a configured B200 Linux machine
+scripts/setup-b200.sh
+scripts/run-b200-benchmark.sh
+```
+
+The GPU path is `mmap -> host pointer -> cudaMemcpy -> device memory -> cuBLAS SGEMM`. Mapping avoids an eager disk-to-Haskell copy, but GPU execution still requires host-to-device transfer. See [docs/BENCHMARKING.md](docs/BENCHMARKING.md) for setup, configuration, output columns, and limitations.

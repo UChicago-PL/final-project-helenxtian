@@ -7,7 +7,7 @@ Project overview
 H-Tensor is a small Haskell library for read-only, memory-mapped 2D float tensors. The project targets startup-latency issues by mapping tensor files directly into memory instead of copying all data into Haskell-managed arrays first.
 
 Current implementation status
-This submission completes the Easy milestone.
+This submission completes the memory-mapped tensor core and adds a typed API with a C FFI matrix multiplication path.
 Implemented:
 1) Memory-mapped loading
 - loadTensorFloatRO maps a binary file with mmapFileForeignPtr.
@@ -41,6 +41,15 @@ Implemented:
   - withTensorFloatRO callback test
 - cabal test all passes.
 
+6) Type-safe tensor API
+- HTensor.Typed represents dtype with a GADT and dimensions with type-level natural numbers.
+- matmulFloat requires matching inner dimensions at compile time.
+- File dimensions discovered at runtime are reflected to the type level and packaged as SomeTypedTensor.
+
+7) C FFI hot path
+- Float32 matrix multiplication is implemented in csrc/htensor.c.
+- HTensor.Typed binds the kernel with an unsafe foreign import and exposes a shape-safe Haskell wrapper.
+
 Code organization
 - src/HTensor/Header.hs
   - Header type, headerSize, parseHeader
@@ -48,6 +57,11 @@ Code organization
   - Tensor type, TensorError, mkTensorRO
   - loadTensorFloatRO, withTensorFloatRO
   - indexRO, (!?), (!)
+- src/HTensor/Typed.hs
+  - GADT dtype witnesses and type-level tensor dimensions
+  - typed mmap loading, indexing, and shape-safe matrix multiplication
+- csrc/htensor.c
+  - Float32 matrix multiplication kernel used through C FFI
 - test/Main.hs
   - standalone test runner and all project tests
 - test/fixtures/
@@ -63,9 +77,10 @@ How to run and interact
 Known limitations / scope decisions
 - Only float32 loading is supported right now (dtype tag 1).
 - Tensor interface is read-only in this milestone.
-- Medium/Hard milestone features (GADT dtype-level typing, matmul, FFI SIMD validation) are not implemented
+- The C matrix multiplication kernel is portable scalar C, not SIMD-optimized.
+- File dimensions cannot be known at compile time, so mmap-loaded tensors use an existential wrapper.
 
 Potential next steps
-- Add dtype-generic loading and type-safe GADT API.
-- Add matrix operations with shape-checked error handling.
-- Add benchmark and optional SIMD checksum pipeline.
+- Add Float64 file loading and kernels.
+- Add Criterion benchmarks for loading and matrix operations.
+- Add an optional SIMD checksum pipeline.
